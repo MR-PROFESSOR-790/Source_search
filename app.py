@@ -27,11 +27,23 @@ ALLOWED_PATHS = [
 
 def get_ctf_path(unix_path):
     """Convert Unix-style path to actual filesystem path"""
+    # First resolve any path traversal in the unix path
+    unix_path = unix_path.replace('\\', '/')
+    path_parts = []
+    for part in unix_path.strip('/').split('/'):
+        if part == '..':
+            if path_parts:
+                path_parts.pop()
+        elif part and part != '.':
+            path_parts.append(part)
+    
+    resolved_unix_path = '/' + '/'.join(path_parts)
+    
     if os.name == 'posix':
-        return unix_path
+        return resolved_unix_path
     else:
         # Convert Unix path to Windows path within CTF_BASE
-        relative_path = unix_path.lstrip('/')
+        relative_path = resolved_unix_path.lstrip('/')
         return os.path.join(CTF_BASE, relative_path.replace('/', os.sep))
 
 def setup_ctf_files():
@@ -185,6 +197,36 @@ def validate_url_scheme(url):
     except:
         return False
 
+@app.route('/debug')
+def debug():
+    """Debug endpoint to check if files exist"""
+    setup_ctf_files()
+    
+    test_paths = [
+        '/tmp/ctf/readme.txt',
+        '/home/user/documents/config.txt', 
+        '/var/www/html/admin/backup.txt',
+        '/home/user/.secret/.flag.txt'
+    ]
+    
+    debug_info = []
+    for unix_path in test_paths:
+        actual_path = get_ctf_path(unix_path)
+        exists = os.path.exists(actual_path)
+        debug_info.append(f"Unix: {unix_path}")
+        debug_info.append(f"Actual: {actual_path}")
+        debug_info.append(f"Exists: {exists}")
+        if exists and os.path.isfile(actual_path):
+            try:
+                with open(actual_path, 'r') as f:
+                    content = f.read(100)
+                debug_info.append(f"Content preview: {content[:50]}...")
+            except:
+                debug_info.append("Content: Error reading")
+        debug_info.append("-" * 40)
+    
+    return render_template('result.html', content='\n'.join(debug_info))
+
 @app.route('/')
 def index():
     setup_ctf_files()
@@ -239,11 +281,10 @@ def search():
                         content = f"Access denied: Path '{decoded_path}' resolves to '{resolved_path}' which is not in allowed directories.\nAllowed: {', '.join(ALLOWED_PATHS)}"
                     else:
                         try:
-                            # Get the actual file system path
+                            # Get the actual file system path - resolve traversal first
                             target_path = get_ctf_path(decoded_path)
-                            target_path = os.path.normpath(target_path)
                             
-                            logger.info(f"Accessing: {target_path}")
+                            logger.info(f"Final target path: {target_path}")
                             
                             if os.path.isdir(target_path):
                                 try:
@@ -272,7 +313,7 @@ def search():
                                 except Exception as e:
                                     content = f"Error reading file {decoded_path}: {str(e)}"
                             else:
-                                content = f"File not found: {decoded_path}"
+                                content = f"File not found: {decoded_path}\nResolved to: {target_path}\nChecking if path exists: {os.path.exists(target_path)}"
 
                         except Exception as e:
                             logger.error(f"File access error: {str(e)}")
