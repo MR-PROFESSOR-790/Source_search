@@ -104,7 +104,7 @@ Recent backup operations:
 
 You have successfully exploited the URL parsing vulnerability!
 
-FLAG: CTF{url_p4rs1ng_byp4ss_m4st3r_2024}
+FLAG: F23A{url_p4rs1ng_byp4ss_m4st3r_2025}
 
 What you learned:
 1. URL parsing confusion attacks
