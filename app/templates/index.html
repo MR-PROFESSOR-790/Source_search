@@ -5,55 +5,111 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web Source Viewer</title>
     <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
         }
+
         .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
+
         h1 {
-            color: #333;
+            color: var(--text-color);
             text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            font-weight: 600;
         }
+
+        .description {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+
         .search-form {
             display: flex;
-            gap: 10px;
-            margin: 20px 0;
+            gap: 1rem;
+            margin: 1.5rem 0;
         }
+
         input[type="text"] {
             flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
         }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
         button {
-            padding: 10px 20px;
-            background-color: #007bff;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
+
         button:hover {
-            background-color: #0056b3;
+            background-color: var(--primary-hover);
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Web Source Viewer</h1>
-        <p>Enter a URL to view its source code:</p>
+        <p class="description">Enter a URL to view its source code or explore the file system</p>
         <form action="/search" method="POST" class="search-form">
-            <input type="text" name="url" placeholder="Enter URL (e.g., https://example.com)" required>
+            <input type="text" name="url" placeholder="Enter URL (e.g., https://example.com or file:///path/to/file)" required>
             <button type="submit">View Source</button>
         </form>
+        <div class="footer">
+            <p>Supports HTTP, HTTPS, and file:// protocols</p>
+        </div>
     </div>
 </body>
 </html>
