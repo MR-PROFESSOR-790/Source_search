@@ -1,1 +1,0 @@
-FLAG{path_traversal_vulnerability_exploited}

@@ -13,7 +13,6 @@ app = Flask(__name__,
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get base directory for CTF files
 if os.name == 'posix':
     CTF_BASE = '/'
 else:
@@ -22,13 +21,17 @@ else:
 ALLOWED_PATHS = [
     '/var/www/html/',
     '/home/user/',
-    '/tmp/'
+    '/tmp/',
+    '/etc/'
 ]
 
 def get_ctf_path(unix_path):
     """Convert Unix-style path to actual filesystem path"""
-    # First resolve any path traversal in the unix path
     unix_path = unix_path.replace('\\', '/')
+    
+    if not unix_path.startswith('/'):
+        unix_path = '/' + unix_path
+    
     path_parts = []
     for part in unix_path.strip('/').split('/'):
         if part == '..':
@@ -42,13 +45,11 @@ def get_ctf_path(unix_path):
     if os.name == 'posix':
         return resolved_unix_path
     else:
-        # Convert Unix path to Windows path within CTF_BASE
         relative_path = resolved_unix_path.lstrip('/')
         return os.path.join(CTF_BASE, relative_path.replace('/', os.sep))
 
 def setup_ctf_files():
     try:
-        # Create directory structure
         dirs_to_create = [
             '/tmp/ctf',
             '/home/user/documents', 
@@ -60,6 +61,13 @@ def setup_ctf_files():
         for unix_dir in dirs_to_create:
             actual_dir = get_ctf_path(unix_dir)
             os.makedirs(actual_dir, exist_ok=True)
+            logger.info(f"Created directory: {actual_dir}")
+        
+        secret_dir = get_ctf_path('/home/user/.secret')
+        if not os.path.exists(secret_dir):
+            logger.error(f"Failed to create .secret directory: {secret_dir}")
+            os.makedirs(secret_dir, exist_ok=True)
+            logger.info(f"Manually created .secret directory: {secret_dir}")
         
         # File contents
         files_content = {
@@ -68,12 +76,11 @@ def setup_ctf_files():
 Welcome to the search engine CTF!
 You've found the first file. Great job!
 
-The admin keeps sensitive files in /home/user/documents/
+
 Try to explore that directory to find more clues.
 
-Files to look for:
-- config.txt
-- secrets.txt
+Look for other files also :
+
 """,
             '/home/user/documents/config.txt': """# Web Application Configuration
 
@@ -82,26 +89,16 @@ database_port=5432
 admin_user=ctf_admin
 admin_password=super_secret_123
 
-All sensitive data has been moved to /var/www/html/admin/
-Check the backup.txt file for more information
-
-The final flag is hidden deeper in the system...
-Look for hidden files starting with '.'
+All sensitive data has been moved to other files, so keep exploring.
 """,
             '/var/www/html/admin/backup.txt': """BACKUP LOG - CONFIDENTIAL
 
 Recent backup operations:
 - User data: /home/user/documents/ ✓
 - System configs: /etc/passwd ✓
-- Hidden files: /home/user/.secret/ ✓
+- Hidden files: You have to explore it by yourself ✓
 
-The flag file has been moved to a hidden directory.
-Path: /home/user/.secret/.flag.txt
 
-Some files might be in /etc/ directory for system configuration.
-Be careful with file:// protocol usage!
-
-Administrator: Remember to check /etc/hosts for network configuration.
 """,
             '/home/user/.secret/.flag.txt': """🎉 CONGRATULATIONS! 🎉
 
@@ -138,16 +135,35 @@ API_KEY=sk-1234567890abcdef
 DATABASE_PASSWORD=secretdb123
 JWT_SECRET=mysupersecretjwtkey
 
-IMPORTANT: Check the admin backup files for more sensitive information.
-The real treasure is in the hidden .secret directory!
+IMPORTANT: Oops this is secret file not the flag file
 """
         }
         
-        # Create all files
         for unix_path, content in files_content.items():
             actual_path = get_ctf_path(unix_path)
-            with open(actual_path, 'w') as f:
-                f.write(content)
+            parent_dir = os.path.dirname(actual_path)
+            os.makedirs(parent_dir, exist_ok=True)
+            
+            logger.info(f"Creating file: {unix_path} -> {actual_path}")
+            
+            try:
+                with open(actual_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                logger.info(f"Successfully created: {actual_path}")
+            except Exception as file_error:
+                logger.error(f"Failed to create file {actual_path}: {file_error}")
+        
+        flag_path = get_ctf_path('/home/user/.secret/.flag.txt')
+        if not os.path.exists(flag_path):
+            logger.error(f"Flag file not found at: {flag_path}")
+            try:
+                with open(flag_path, 'w', encoding='utf-8') as f:
+                    f.write(files_content['/home/user/.secret/.flag.txt'])
+                logger.info(f"Manually created flag file: {flag_path}")
+            except Exception as e:
+                logger.error(f"Failed to manually create flag file: {e}")
+        else:
+            logger.info(f"Flag file exists: {flag_path}")
         
         logger.info("CTF files setup completed")
         
@@ -155,9 +171,11 @@ The real treasure is in the hidden .secret directory!
         logger.error(f"Error setting up CTF files: {str(e)}")
 
 def is_safe_path(path):
-    # Remove leading/trailing slashes and normalize
     path = path.strip('/').replace('\\', '/')
-    # Resolve any remaining path traversal
+    
+    if not path:
+        return False
+    
     path_parts = []
     for part in path.split('/'):
         if part == '..':
@@ -168,15 +186,13 @@ def is_safe_path(path):
     
     resolved_path = '/'.join(path_parts)
     
-    # Check if resolved path starts with or contains allowed paths
     for allowed in ALLOWED_PATHS:
         allowed_clean = allowed.strip('/')
-        if resolved_path.startswith(allowed_clean) or allowed_clean in resolved_path:
+        if resolved_path.startswith(allowed_clean):
             return True
     
-    # Additional bypass keywords
-    bypass_keywords = ['tmp', 'html', 'user', 'var', 'home']
-    if any(keyword in resolved_path.lower() for keyword in bypass_keywords):
+    bypass_keywords = ['tmp/ctf', 'var/www/html', 'home/user', 'etc']
+    if any(resolved_path.startswith(keyword) for keyword in bypass_keywords):
         return True
         
     return False
@@ -197,7 +213,7 @@ def validate_url_scheme(url):
     except:
         return False
 
-@app.route('/debug')
+@app.route('/debugwiovnwovnruege')
 def debug():
     """Debug endpoint to check if files exist"""
     setup_ctf_files()
@@ -224,6 +240,24 @@ def debug():
             except:
                 debug_info.append("Content: Error reading")
         debug_info.append("-" * 40)
+    
+    test_traversal = "var/www/html/../../../home/user/.secret/.flag.txt"
+    resolved_test = get_ctf_path(test_traversal)
+    debug_info.append(f"Test traversal: {test_traversal}")
+    debug_info.append(f"Resolved to: {resolved_test}")
+    debug_info.append(f"Exists: {os.path.exists(resolved_test)}")
+    debug_info.append("-" * 40)
+    
+    secret_dir = get_ctf_path('/home/user/.secret')
+    debug_info.append(f"Secret dir path: {secret_dir}")
+    debug_info.append(f"Secret dir exists: {os.path.exists(secret_dir)}")
+    if os.path.exists(secret_dir):
+        try:
+            secret_files = os.listdir(secret_dir)
+            debug_info.append(f"Secret dir contents: {secret_files}")
+        except Exception as e:
+            debug_info.append(f"Error listing secret dir: {e}")
+    debug_info.append("-" * 40)
     
     return render_template('result.html', content='\n'.join(debug_info))
 
@@ -263,25 +297,19 @@ def search():
                     
                     decoded_path = unquote(unquote(file_part))
                     
-                    # Normalize path separators
                     decoded_path = decoded_path.replace('\\', '/')
                     
-                    # For path validation, remove leading slash and resolve path traversal
                     check_path = decoded_path.lstrip('/')
-                    # Resolve path traversal sequences
-                    resolved_path = os.path.normpath(check_path).replace('\\', '/')
                     
                     logger.info(f"Original path: {file_part}")
                     logger.info(f"Decoded path: {decoded_path}")
                     logger.info(f"Check path: {check_path}")
-                    logger.info(f"Resolved path: {resolved_path}")
-                    logger.info(f"Path validation result: {is_safe_path(resolved_path)}")
+                    logger.info(f"Path validation result: {is_safe_path(check_path)}")
                     
-                    if not is_safe_path(resolved_path):
-                        content = f"Access denied: Path '{decoded_path}' resolves to '{resolved_path}' which is not in allowed directories.\nAllowed: {', '.join(ALLOWED_PATHS)}"
+                    if not is_safe_path(check_path):
+                        content = f"Access denied: Path '{decoded_path}' is not in allowed directories.\nAllowed: {', '.join(ALLOWED_PATHS)}"
                     else:
                         try:
-                            # Get the actual file system path - resolve traversal first
                             target_path = get_ctf_path(decoded_path)
                             
                             logger.info(f"Final target path: {target_path}")
